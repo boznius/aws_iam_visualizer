@@ -1,0 +1,73 @@
+Users:
+  attached:
+    AttachedPolicies:
+    - AdministratorAccess
+    - AlexaForBusinessDeviceSetup
+    - AdministratorAccess-AWSElasticBeanstalk
+    - AdministratorAccess-Amplify
+    InlinePolicies: []
+    Groups: {}
+  jiktak:
+    AttachedPolicies: []
+    InlinePolicies: []
+    Groups:
+      Administrators:
+        AttachedPolicies:
+        - AssumeAdmin
+        InlinePolicies: []
+  terraform:
+    AttachedPolicies:
+    - TerraformFull
+    InlinePolicies: []
+    Groups:
+      Administrators:
+        AttachedPolicies:
+        - AssumeAdmin
+        InlinePolicies: []
+Roles:
+  admin:
+    AttachedPolicies:
+    - AdministratorAccess
+    InlinePolicies: []
+  AWSServiceRoleForAutoScaling:
+    AttachedPolicies:
+    - AutoScalingServiceRolePolicy
+    InlinePolicies: []
+  AWSServiceRoleForECS:
+    AttachedPolicies:
+    - AmazonECSServiceRolePolicy
+    InlinePolicies: []
+  AWSServiceRoleForElasticLoadBalancing:
+    AttachedPolicies:
+    - AWSElasticLoadBalancingServiceRolePolicy
+    InlinePolicies: []
+  AWSServiceRoleForRDS:
+    AttachedPolicies:
+    - AmazonRDSServiceRolePolicy
+    InlinePolicies: []
+  AWSServiceRoleForSupport:
+    AttachedPolicies:
+    - AWSSupportServiceRolePolicy
+    InlinePolicies: []
+  AWSServiceRoleForTrustedAdvisor:
+    AttachedPolicies:
+    - AWSTrustedAdvisorServiceRolePolicy
+    InlinePolicies: []
+  dms-vpc-role:
+    AttachedPolicies:
+    - AmazonDMSVPCManagementRole
+    InlinePolicies: []
+  ecsInstanceRole:
+    AttachedPolicies:
+    - AmazonEC2ContainerServiceforEC2Role
+    InlinePolicies: []
+  jiktak:
+    AttachedPolicies:
+    - AlexaForBusinessFullAccess
+    - AlexaForBusinessDeviceSetup
+    - AdministratorAccess-AWSElasticBeanstalk
+    InlinePolicies: []
+  rds-monitoring-role:
+    AttachedPolicies:
+    - AmazonRDSEnhancedMonitoringRole
+    InlinePolicies: []
