@@ -15,3 +15,12 @@ Generating graph visualization...
 Graph image generated: iam_graph.png
 
 ```
+
+### Other examples : 
+
+```
+python iam_visualizer.py --entities=users --name=alice --print-yaml
+python iam_visualizer.py --print-yaml
+python iam_visualizer.py --print-yaml --generate-graph
+
+```
