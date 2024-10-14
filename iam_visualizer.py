@@ -211,14 +211,14 @@ def main():
 
     if args.print_yaml:
         print("Outputting IAM data to console:")
+        write_yaml(iam_data, None, print_yaml=True)
     else:
         print(f"Writing IAM data to YAML file: {args.yaml_file}")
-    write_yaml(iam_data, args.yaml_file, print_yaml=args.print_yaml)
-
-    print(f"Writing IAM data to DOT file: {args.dot_file}")
-    write_dot(iam_data, args.dot_file)
+        write_yaml(iam_data, args.yaml_file)
 
     if args.generate_graph:
+        print(f"Writing IAM data to DOT file: {args.dot_file}")
+        write_dot(iam_data, args.dot_file)
         print("Generating graph visualization...")
         generate_graph(args.dot_file, args.graph_image)
     else:
