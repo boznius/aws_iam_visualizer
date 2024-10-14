@@ -7,12 +7,12 @@ import subprocess
 import sys
 
 def get_iam_data(iam_client, entities, name):
-    """Retrieve IAM users, roles, or policies based on specified names."""
+    """Retrieve IAM users, groups, roles, or policies based on specified names."""
     iam_data = {}
 
     if 'users' in entities or 'all' in entities:
         iam_data['Users'] = {}
-        if name:
+        if name and ('users' in entities or 'all' in entities):
             try:
                 user = iam_client.get_user(UserName=name)['User']
                 user_data = get_user_data(iam_client, name)
@@ -28,9 +28,27 @@ def get_iam_data(iam_client, entities, name):
                     user_data = get_user_data(iam_client, user_name)
                     iam_data['Users'][user_name] = user_data
 
+    if 'groups' in entities or 'all' in entities:
+        iam_data['Groups'] = {}
+        if name and ('groups' in entities or 'all' in entities):
+            try:
+                group = iam_client.get_group(GroupName=name)['Group']
+                group_data = get_group_data(iam_client, name)
+                iam_data['Groups'][name] = group_data
+            except iam_client.exceptions.NoSuchEntityException:
+                print(f"Group '{name}' does not exist.")
+                sys.exit(1)
+        else:
+            paginator = iam_client.get_paginator('list_groups')
+            for response in paginator.paginate():
+                for group in response['Groups']:
+                    group_name = group['GroupName']
+                    group_data = get_group_data(iam_client, group_name)
+                    iam_data['Groups'][group_name] = group_data
+
     if 'roles' in entities or 'all' in entities:
         iam_data['Roles'] = {}
-        if name:
+        if name and ('roles' in entities or 'all' in entities):
             try:
                 role = iam_client.get_role(RoleName=name)['Role']
                 role_data = get_role_data(iam_client, name)
@@ -48,7 +66,7 @@ def get_iam_data(iam_client, entities, name):
 
     if 'policies' in entities or 'all' in entities:
         iam_data['Policies'] = {}
-        if name:
+        if name and ('policies' in entities or 'all' in entities):
             paginator = iam_client.get_paginator('list_policies')
             found_policy = False
             for response in paginator.paginate(Scope='Local'):
@@ -83,7 +101,7 @@ def get_user_data(iam_client, user_name):
     user_data = {
         'AttachedPolicies': [],
         'InlinePolicies': [],
-        'Groups': {}
+        'Groups': []
     }
 
     attached_policies = iam_client.list_attached_user_policies(UserName=user_name)['AttachedPolicies']
@@ -93,10 +111,7 @@ def get_user_data(iam_client, user_name):
     user_data['InlinePolicies'] = inline_policies
 
     groups = iam_client.list_groups_for_user(UserName=user_name)['Groups']
-    for group in groups:
-        group_name = group['GroupName']
-        group_data = get_group_data(iam_client, group_name)
-        user_data['Groups'][group_name] = group_data
+    user_data['Groups'] = [group['GroupName'] for group in groups]
 
     return user_data
 
@@ -104,7 +119,8 @@ def get_group_data(iam_client, group_name):
     """Retrieve data for a specific group."""
     group_data = {
         'AttachedPolicies': [],
-        'InlinePolicies': []
+        'InlinePolicies': [],
+        'Users': []
     }
 
     attached_policies = iam_client.list_attached_group_policies(GroupName=group_name)['AttachedPolicies']
@@ -112,6 +128,12 @@ def get_group_data(iam_client, group_name):
 
     inline_policies = iam_client.list_group_policies(GroupName=group_name)['PolicyNames']
     group_data['InlinePolicies'] = inline_policies
+
+    # List users in the group
+    paginator = iam_client.get_paginator('get_group')
+    for response in paginator.paginate(GroupName=group_name):
+        users = response['Users']
+        group_data['Users'].extend([user['UserName'] for user in users])
 
     return group_data
 
@@ -155,13 +177,21 @@ def write_dot(iam_data, dot_file):
             for policy in user_data.get('InlinePolicies', []):
                 f.write(f'  "{user}" -> "{policy}" [label="has inline policy"];\n')
 
-            for group, group_data in user_data.get('Groups', {}).items():
+            for group in user_data.get('Groups', []):
                 f.write(f'  "{user}" -> "{group}" [label="member of"];\n')
 
-                for policy in group_data.get('AttachedPolicies', []):
-                    f.write(f'  "{group}" -> "{policy}" [label="has policy"];\n')
-                for policy in group_data.get('InlinePolicies', []):
-                    f.write(f'  "{group}" -> "{policy}" [label="has inline policy"];\n')
+        # Process Groups
+        for group, group_data in iam_data.get('Groups', {}).items():
+            f.write(f'  "{group}" [label="Group: {group}", shape=diamond];\n')
+
+            for policy in group_data.get('AttachedPolicies', []):
+                f.write(f'  "{group}" -> "{policy}" [label="has policy"];\n')
+
+            for policy in group_data.get('InlinePolicies', []):
+                f.write(f'  "{group}" -> "{policy}" [label="has inline policy"];\n')
+
+            for user in group_data.get('Users', []):
+                f.write(f'  "{group}" -> "{user}" [label="includes user"];\n')
 
         # Process Roles
         for role, role_data in iam_data.get('Roles', {}).items():
@@ -198,8 +228,8 @@ def main():
     parser.add_argument('--yaml-file', default='iam_data.yaml', help='Output YAML file name')
     parser.add_argument('--dot-file', default='iam_graph.dot', help='Output DOT file name')
     parser.add_argument('--graph-image', default='iam_graph.png', help='Output graph image file name (PNG format)')
-    parser.add_argument('--entities', default='all', help='Comma-separated list of entities to include: users,roles,policies')
-    parser.add_argument('--name', help='Specify a user name, role name, or policy name to visualize')
+    parser.add_argument('--entities', default='all', help='Comma-separated list of entities to include: users,groups,roles,policies')
+    parser.add_argument('--name', help='Specify a user, group, role, or policy name to visualize')
     parser.add_argument('--print-yaml', action='store_true', help='Output YAML data to console instead of saving to a file')
     args = parser.parse_args()
 
